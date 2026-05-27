@@ -11,11 +11,28 @@ The agent writes its PoC to `workspace/poc`.
 """
 
 import json
+import shutil
 import subprocess
 import sys
 import time
 from pathlib import Path
 from typing import Iterator
+
+
+def _claude_exe() -> str:
+    """
+    Locate the claude CLI executable.
+
+    On Windows, claude is installed as a .cmd wrapper by npm. subprocess.Popen
+    cannot execute .cmd files directly by bare name — shutil.which resolves
+    PATHEXT and returns the full path including the .cmd extension.
+    """
+    path = shutil.which("claude")
+    if path:
+        return path
+    raise FileNotFoundError(
+        "claude not found in PATH. Install with: npm install -g @anthropic-ai/claude-code"
+    )
 
 
 def stream_claude(
@@ -33,10 +50,11 @@ def stream_claude(
     Each yielded dict is one parsed JSON event line.
     """
     cmd = [
-        "claude",
+        _claude_exe(),
         "-p", prompt,
         "--dangerously-skip-permissions",
         "--output-format", "stream-json",
+        "--verbose",
         "--model", model,
         "--max-turns", str(max_turns),
     ]
